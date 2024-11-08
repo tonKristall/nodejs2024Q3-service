@@ -13,7 +13,7 @@ export class UsersService {
 
   async create({ login, password }: CreateUserDto): Promise<UserResponse> {
     const createdAt = new Date().getTime();
-    const newUser: Omit<User, 'password'> = {
+    const newUser: UserResponse = {
       id: crypto.randomUUID(),
       login,
       createdAt,

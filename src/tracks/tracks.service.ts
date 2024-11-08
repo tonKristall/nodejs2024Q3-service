@@ -13,7 +13,7 @@ export class TracksService {
     duration,
     albumId,
   }: CreateTrackDto): Promise<TrackResponse> {
-    const newTrack: Omit<Track, 'password'> = {
+    const newTrack: Track = {
       id: crypto.randomUUID(),
       name,
       artistId,
@@ -67,5 +67,21 @@ export class TracksService {
 
     this.tracks.splice(trackIndex, 1);
     return 'done';
+  }
+
+  async removeAlbum(albumId: string): Promise<void> {
+    this.tracks.forEach((track) => {
+      if (track.albumId === albumId) {
+        track.albumId = null;
+      }
+    });
+  }
+
+  async removeArtist(artistId: string): Promise<void> {
+    this.tracks.forEach((track) => {
+      if (track.artistId === artistId) {
+        track.artistId = null;
+      }
+    });
   }
 }
