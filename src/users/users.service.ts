@@ -2,50 +2,75 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Inject,
 } from '@nestjs/common';
-import { User, UserResponse } from './interfaces/user.interface';
+import { UserResponse } from './interfaces/user.interface';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class UsersService {
-  private readonly users: User[] = [];
+  constructor(
+    @Inject(DatabaseService) private readonly databaseService: DatabaseService,
+  ) {}
 
-  async create({ login, password }: CreateUserDto): Promise<UserResponse> {
-    const createdAt = new Date().getTime();
-    const newUser: UserResponse = {
-      id: crypto.randomUUID(),
-      login,
-      createdAt,
-      updatedAt: createdAt,
-      version: 1,
+  async create(data: CreateUserDto): Promise<UserResponse> {
+    const user = await this.databaseService.user.create({
+      data: { ...data, version: 1 },
+      select: {
+        id: true,
+        login: true,
+        createdAt: true,
+        updatedAt: true,
+        version: true,
+      },
+    });
+
+    return {
+      ...user,
+      createdAt: new Date(user.createdAt).getTime(),
+      updatedAt: new Date(user.updatedAt).getTime(),
     };
-    this.users.push({ ...newUser, password });
-    return newUser;
   }
 
   async findAll(): Promise<UserResponse[]> {
-    return this.users.map(({ login, createdAt, id, version, updatedAt }) => ({
-      id,
-      login,
-      createdAt,
-      updatedAt,
-      version,
+    const users = await this.databaseService.user.findMany({
+      select: {
+        id: true,
+        login: true,
+        createdAt: true,
+        updatedAt: true,
+        version: true,
+      },
+    });
+
+    return users.map((user) => ({
+      ...user,
+      createdAt: new Date(user.createdAt).getTime(),
+      updatedAt: new Date(user.updatedAt).getTime(),
     }));
   }
 
   async findOne(id: string): Promise<UserResponse> {
-    const user = this.users.find((user) => user.id === id);
+    const user = await this.databaseService.user.findUnique({
+      select: {
+        id: true,
+        login: true,
+        createdAt: true,
+        updatedAt: true,
+        version: true,
+      },
+      where: { id },
+    });
     if (!user) {
       throw new NotFoundException('User does not exist!');
     }
 
     return {
-      id: user.id,
-      login: user.login,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      version: user.version,
+      ...user,
+      createdAt: new Date(user.createdAt).getTime(),
+      updatedAt: new Date(user.updatedAt).getTime(),
     };
   }
 
@@ -53,44 +78,51 @@ export class UsersService {
     id: string,
     { oldPassword, newPassword }: UpdatePasswordDto,
   ): Promise<UserResponse> {
-    const userIndex = this.users.findIndex((user) => user.id === id);
+    const user = await this.databaseService.user.findUnique({ where: { id } });
 
-    if (userIndex === -1) {
+    if (!user) {
       throw new NotFoundException('User does not exist!');
     }
-
-    const user = this.users[userIndex];
 
     if (user.password !== oldPassword) {
       throw new ForbiddenException('Old password is incorrect!');
     }
 
-    const updateUser = {
+    const data = {
       ...user,
       password: newPassword,
-      updatedAt: new Date().getTime(),
+      updatedAt: new Date(),
       version: user.version + 1,
     };
 
-    this.users[userIndex] = updateUser;
+    const updateUser = await this.databaseService.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        login: true,
+        createdAt: true,
+        updatedAt: true,
+        version: true,
+      },
+    });
 
     return {
-      id: updateUser.id,
-      login: updateUser.login,
-      createdAt: updateUser.createdAt,
-      updatedAt: updateUser.updatedAt,
-      version: updateUser.version,
+      ...updateUser,
+      createdAt: new Date(updateUser.createdAt).getTime(),
+      updatedAt: new Date(updateUser.updatedAt).getTime(),
     };
   }
 
   async remove(id: string): Promise<string | null> {
-    const userIndex = this.users.findIndex((user) => user.id === id);
+    const user = await this.databaseService.user.findUnique({ where: { id } });
 
-    if (userIndex === -1) {
+    if (!user) {
       throw new NotFoundException('User does not exist!');
     }
 
-    this.users.splice(userIndex, 1);
+    await this.databaseService.user.delete({ where: { id } });
+
     return 'done';
   }
 }

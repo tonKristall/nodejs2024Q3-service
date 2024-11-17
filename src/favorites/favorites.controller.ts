@@ -10,30 +10,19 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { FavoritesService } from './favorites.service';
-import { TracksService } from '../tracks/tracks.service';
 import {
   FavoritesResponse,
   TFavorites,
   TFavoritesEntity,
 } from './interfaces/favorites.interface';
-import { AlbumsService } from '../albums/albums.service';
-import { ArtistsService } from '../artists/artists.service';
 
 @Controller('favs')
 export class FavoritesController {
-  constructor(
-    private favoritesService: FavoritesService,
-    private albumsService: AlbumsService,
-    private tracksService: TracksService,
-    private artistsService: ArtistsService,
-  ) {}
+  constructor(private favoritesService: FavoritesService) {}
 
   @Get()
   async getAll(): Promise<FavoritesResponse> {
-    const artists = await this.artistsService.findAll();
-    const albums = await this.albumsService.findAll();
-    const tracks = await this.tracksService.findAll();
-    return await this.favoritesService.getAll({ artists, albums, tracks });
+    return await this.favoritesService.getAll();
   }
 
   @Post(':entityType/:id')

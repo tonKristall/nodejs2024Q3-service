@@ -1,35 +1,26 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Track, TrackResponse } from './interfaces/track.interface';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { TrackResponse } from './interfaces/track.interface';
 import { CreateTrackDto } from './dto/create-track.dto';
 import { UpdateTrackDto } from './dto/update-track.dto';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class TracksService {
-  private readonly tracks: Track[] = [];
-
-  async create({
-    name,
-    artistId,
-    duration,
-    albumId,
-  }: CreateTrackDto): Promise<TrackResponse> {
-    const newTrack: Track = {
-      id: crypto.randomUUID(),
-      name,
-      artistId,
-      albumId,
-      duration,
-    };
-    this.tracks.push(newTrack);
-    return newTrack;
+  constructor(
+    @Inject(DatabaseService) private readonly databaseService: DatabaseService,
+  ) {}
+  async create(data: CreateTrackDto): Promise<TrackResponse> {
+    return await this.databaseService.track.create({ data });
   }
 
   async findAll(): Promise<TrackResponse[]> {
-    return this.tracks;
+    return await this.databaseService.track.findMany();
   }
 
   async findOne(id: string): Promise<TrackResponse> {
-    const track = this.tracks.find((track) => track.id === id);
+    const track = await this.databaseService.track.findUnique({
+      where: { id },
+    });
     if (!track) {
       throw new NotFoundException('Track does not exist!');
     }
@@ -41,47 +32,54 @@ export class TracksService {
     id: string,
     { name, artistId, duration, albumId }: UpdateTrackDto,
   ): Promise<TrackResponse> {
-    const trackIndex = this.tracks.findIndex((track) => track.id === id);
+    const track = await this.databaseService.track.findUnique({
+      where: { id },
+    });
 
-    if (trackIndex === -1) {
+    if (!track) {
       throw new NotFoundException('Track does not exist!');
     }
 
-    const updateTrack = { ...this.tracks[trackIndex] };
-    if (name) updateTrack.name = name;
-    if (duration) updateTrack.duration = duration;
-    if (artistId !== undefined) updateTrack.artistId = artistId;
-    if (albumId !== undefined) updateTrack.albumId = albumId;
+    const updatedTrack = { ...track };
 
-    this.tracks[trackIndex] = updateTrack;
+    if (name) updatedTrack.name = name;
+    if (duration) updatedTrack.duration = duration;
+    if (artistId !== undefined) updatedTrack.artistId = artistId;
+    if (albumId !== undefined) updatedTrack.albumId = albumId;
 
-    return this.tracks[trackIndex];
+    await this.databaseService.track.update({
+      where: { id },
+      data: updatedTrack,
+    });
+
+    return updatedTrack;
   }
 
   async remove(id: string): Promise<string | null> {
-    const trackIndex = this.tracks.findIndex((track) => track.id === id);
+    const track = await this.databaseService.track.findUnique({
+      where: { id },
+    });
 
-    if (trackIndex === -1) {
+    if (!track) {
       throw new NotFoundException('Track does not exist!');
     }
 
-    this.tracks.splice(trackIndex, 1);
+    await this.databaseService.track.delete({ where: { id } });
+
     return 'done';
   }
 
   async removeAlbum(albumId: string): Promise<void> {
-    this.tracks.forEach((track) => {
-      if (track.albumId === albumId) {
-        track.albumId = null;
-      }
+    await this.databaseService.track.updateMany({
+      where: { albumId },
+      data: { albumId: null },
     });
   }
 
   async removeArtist(artistId: string): Promise<void> {
-    this.tracks.forEach((track) => {
-      if (track.artistId === artistId) {
-        track.artistId = null;
-      }
+    await this.databaseService.track.updateMany({
+      where: { artistId },
+      data: { artistId: null },
     });
   }
 }
