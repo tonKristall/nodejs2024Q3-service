@@ -21,7 +21,10 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "docker:build": "docker-compose up --build",
-    "docker:start": "prisma migrate deploy && npm run start:dev"
+    "docker:start": "prisma migrate deploy && npm run start:dev",
+    "docker:scout": "npm run docker:scout:db && npm run docker:scout:app",
+    "docker:scout:db": "docker scout cves tonkristall/nodejs2024q3-service:db",
+    "docker:scout:app": "docker scout cves tonkristall/nodejs2024q3-service:app"
   },
   "dependencies": {
     "@nestjs/common": "^8.0.0",
