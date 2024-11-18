@@ -39,8 +39,8 @@ model Track {
   artistId  String?
   albumId   String?
 
-  artist    Artist?     @relation(fields: [artistId], references: [id])
-  album     Album?      @relation(fields: [albumId], references: [id])
+  artist    Artist?     @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  album     Album?      @relation(fields: [albumId], references: [id], onDelete: SetNull)
   favorite Favorites[] @relation("track")
 }
 
@@ -50,7 +50,7 @@ model Album {
   year Int
   artistId  String?
 
-  artist    Artist?     @relation(fields: [artistId], references: [id])
+  artist    Artist?     @relation(fields: [artistId], references: [id], onDelete: SetNull)
   Track     Track[]
   Favorites Favorites[] @relation("album")
 }

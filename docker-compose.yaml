@@ -2,7 +2,7 @@ services:
   app:
     container_name: app
     env_file: ".env"
-    restart: on-failure
+    restart: unless-stopped
     build: .
     ports:
       - ${PORT}:${PORT}

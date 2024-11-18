@@ -3,7 +3,6 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
 RUN npx prisma generate
 EXPOSE ${PORT}
-CMD ["npm", "run", "start:migrate:prod"]
+CMD ["npm", "run", "docker:start"]

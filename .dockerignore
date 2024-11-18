@@ -14,6 +14,7 @@
 **/.toolstarget
 **/.vs
 **/.vscode
+**/.idea
 **/.next
 **/.cache
 **/*.*proj.user
@@ -30,5 +31,6 @@
 **/values.dev.yaml
 **/build
 **/dist
+**/test
 LICENSE
 README.md

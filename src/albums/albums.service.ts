@@ -62,11 +62,4 @@ export class AlbumsService {
     await this.databaseService.album.delete({ where: { id } });
     return 'done';
   }
-
-  async removeArtist(artistId: string): Promise<void> {
-    await this.databaseService.album.updateMany({
-      where: { artistId },
-      data: { artistId: null },
-    });
-  }
 }

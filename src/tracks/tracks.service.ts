@@ -68,18 +68,4 @@ export class TracksService {
 
     return 'done';
   }
-
-  async removeAlbum(albumId: string): Promise<void> {
-    await this.databaseService.track.updateMany({
-      where: { albumId },
-      data: { albumId: null },
-    });
-  }
-
-  async removeArtist(artistId: string): Promise<void> {
-    await this.databaseService.track.updateMany({
-      where: { artistId },
-      data: { artistId: null },
-    });
-  }
 }
