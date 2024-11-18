@@ -3,7 +3,8 @@
 ## Prerequisites
 
 - Git - [Download & Install Git](https://git-scm.com/downloads).
-- Node.js - [Download & Install Node.js](https://nodejs.org/en/download/) and the npm package manager.
+- Node.js (use v22.9.0) - [Download & Install Node.js](https://nodejs.org/en/download/) and the npm package manager.
+- Docker Desktop - [Download & Install Docker Desktop](https://docs.docker.com/engine/install/).
 
 ## Downloading
 
@@ -18,9 +19,9 @@ npm install
 ```
 
 ## Running application
-
+Copy .env.example to .env
 ```
-npm start
+npm run docker:build
 ```
 
 After starting the app on port (4000 as default) you can open
