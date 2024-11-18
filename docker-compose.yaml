@@ -14,10 +14,11 @@ services:
       - my_network
 
   db:
-    image: postgres:latest
     container_name: db
     env_file: ".env"
     restart: always
+    build:
+      context: ./prisma
     volumes:
       - db_data:/var/lib/postgresql/data
       - db_logs:/var/lib/postgresql/logs
