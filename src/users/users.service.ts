@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   Inject,
+  ConflictException,
 } from '@nestjs/common';
 import { UserResponse } from './interfaces/user.interface';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -16,6 +17,14 @@ export class UsersService {
   ) {}
 
   async create(data: CreateUserDto): Promise<UserResponse> {
+    const userDb = await this.databaseService.user.findUnique({
+      where: { login: data.login },
+    });
+
+    if (userDb) {
+      throw new ConflictException('Login already exists!');
+    }
+
     const user = await this.databaseService.user.create({
       data: { ...data, version: 1 },
       select: {
