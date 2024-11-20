@@ -58,7 +58,7 @@ npm run test:auth -- <path to suite>
 ### Auto-fix and format
 
 ```
-npm run lint
+npm run lints
 ```
 
 ```
