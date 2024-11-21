@@ -1,28 +1,27 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Artist, ArtistResponse } from './interfaces/artist.interface';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ArtistResponse } from './interfaces/artist.interface';
 import { CreateArtistDto } from './dto/create-artist.dto';
 import { UpdateArtistDto } from './dto/update-artist.dto';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class ArtistsService {
-  private readonly artists: Artist[] = [];
+  constructor(
+    @Inject(DatabaseService) private readonly databaseService: DatabaseService,
+  ) {}
 
-  async create({ name, grammy }: CreateArtistDto): Promise<ArtistResponse> {
-    const newArtist: Artist = {
-      id: crypto.randomUUID(),
-      name,
-      grammy,
-    };
-    this.artists.push(newArtist);
-    return newArtist;
+  async create(data: CreateArtistDto): Promise<ArtistResponse> {
+    return await this.databaseService.artist.create({ data });
   }
 
   async findAll(): Promise<ArtistResponse[]> {
-    return this.artists;
+    return await this.databaseService.artist.findMany();
   }
 
   async findOne(id: string): Promise<ArtistResponse> {
-    const artist = this.artists.find((artist) => artist.id === id);
+    const artist = await this.databaseService.artist.findUnique({
+      where: { id },
+    });
     if (!artist) {
       throw new NotFoundException('Artist does not exist!');
     }
@@ -34,29 +33,32 @@ export class ArtistsService {
     id: string,
     { name, grammy }: UpdateArtistDto,
   ): Promise<ArtistResponse> {
-    const artistIndex = this.artists.findIndex((artist) => artist.id === id);
-
-    if (artistIndex === -1) {
+    const artist = await this.databaseService.artist.findUnique({
+      where: { id },
+    });
+    if (!artist) {
       throw new NotFoundException('Artist does not exist!');
     }
 
-    const updateArtist = { ...this.artists[artistIndex] };
+    const updateArtist = { ...artist };
     if (name) updateArtist.name = name;
     if (typeof grammy === 'boolean') updateArtist.grammy = grammy;
 
-    this.artists[artistIndex] = updateArtist;
-
-    return this.artists[artistIndex];
+    return await this.databaseService.artist.update({
+      where: { id },
+      data: updateArtist,
+    });
   }
 
   async remove(id: string): Promise<string | null> {
-    const artistIndex = this.artists.findIndex((artist) => artist.id === id);
-
-    if (artistIndex === -1) {
+    const artist = await this.databaseService.artist.findUnique({
+      where: { id },
+    });
+    if (!artist) {
       throw new NotFoundException('Artist does not exist!');
     }
 
-    this.artists.splice(artistIndex, 1);
+    await this.databaseService.artist.delete({ where: { id } });
     return 'done';
   }
 }

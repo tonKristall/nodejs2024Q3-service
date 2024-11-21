@@ -66,8 +66,6 @@ export class ArtistsController {
   async remove(@Param('id', new ParseUUIDPipe()) id: string) {
     try {
       await this.artistsService.remove(id);
-      await this.tracksService.removeArtist(id);
-      await this.albumsService.removeArtist(id);
     } catch (error) {
       throw new HttpException(error.response, error.status);
     }

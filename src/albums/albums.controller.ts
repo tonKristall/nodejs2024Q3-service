@@ -62,7 +62,6 @@ export class AlbumsController {
   async remove(@Param('id', new ParseUUIDPipe()) id: string) {
     try {
       await this.albumsService.remove(id);
-      await this.tracksService.removeAlbum(id);
     } catch (error) {
       throw new HttpException(error.response, error.status);
     }
