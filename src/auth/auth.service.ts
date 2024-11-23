@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { v4 as uuid } from 'uuid';
+import { hash, compare } from 'bcrypt';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { DatabaseService } from '../database/database.service';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -18,7 +19,8 @@ export class AuthService {
     const user = await this.databaseService.user.findUnique({
       where: { login: data.login },
     });
-    if (!user || user.password !== data.password) {
+
+    if (!user || !(await compare(data.password, user.password))) {
       throw new ForbiddenException('Incorrect login or password!');
     }
 
@@ -53,10 +55,12 @@ export class AuthService {
       },
     });
 
+    const password = await hash(data.password, Number(process.env.CRYPT_SALT));
+
     const user =
       userDb ||
       (await this.databaseService.user.create({
-        data: { ...data, version: 1 },
+        data: { ...data, password, version: 1 },
         select: {
           id: true,
           login: true,

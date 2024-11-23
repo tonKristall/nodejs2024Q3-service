@@ -3,8 +3,8 @@ import {
   NotFoundException,
   ForbiddenException,
   Inject,
-  ConflictException,
 } from '@nestjs/common';
+import { compare, hash } from 'bcrypt';
 import { UserResponse } from './interfaces/user.interface';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
@@ -21,20 +21,19 @@ export class UsersService {
       where: { login: data.login },
     });
 
-    if (userDb) {
-      throw new ConflictException('Login already exists!');
-    }
-
-    const user = await this.databaseService.user.create({
-      data: { ...data, version: 1 },
-      select: {
-        id: true,
-        login: true,
-        createdAt: true,
-        updatedAt: true,
-        version: true,
-      },
-    });
+    const password = await hash(data.password, Number(process.env.CRYPT_SALT));
+    const user =
+      userDb ||
+      (await this.databaseService.user.create({
+        data: { ...data, password, version: 1 },
+        select: {
+          id: true,
+          login: true,
+          createdAt: true,
+          updatedAt: true,
+          version: true,
+        },
+      }));
 
     return {
       ...user,
@@ -93,13 +92,14 @@ export class UsersService {
       throw new NotFoundException('User does not exist!');
     }
 
-    if (user.password !== oldPassword) {
+    if (!(await compare(oldPassword, user.password))) {
       throw new ForbiddenException('Old password is incorrect!');
     }
 
+    const password = await hash(newPassword, Number(process.env.CRYPT_SALT));
     const data = {
       ...user,
-      password: newPassword,
+      password,
       updatedAt: new Date(),
       version: user.version + 1,
     };
