@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import {
   BadRequestException,
   UnauthorizedException,
@@ -9,9 +9,13 @@ import { SwaggerModule, OpenAPIObject } from '@nestjs/swagger';
 import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import 'dotenv/config';
+import { LoggingService } from './logging/logging.service';
+import { AllExceptionsFilter } from './filters/all-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const loggingService = app.get<LoggingService>(LoggingService);
+  const httpAdapterHost = app.get(HttpAdapterHost);
 
   const api = yaml.load(
     readFileSync('./doc/api.yaml', 'utf8'),
@@ -28,6 +32,21 @@ async function bootstrap() {
       },
     }),
   );
+
+  app.useGlobalFilters(
+    new AllExceptionsFilter(httpAdapterHost, loggingService),
+  );
+
+  process.on('uncaughtException', (err) => {
+    loggingService.error('Uncaught Exception: ' + err.message);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    loggingService.error(
+      'Unhandled Rejection at: ' + promise + ' reason: ' + reason,
+    );
+  });
+
   await app.listen(process.env.PORT || 4000);
 }
 bootstrap();

@@ -9,6 +9,7 @@ import { UserResponse } from './interfaces/user.interface';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { DatabaseService } from '../database/database.service';
+import * as process from 'process';
 
 @Injectable()
 export class UsersService {
