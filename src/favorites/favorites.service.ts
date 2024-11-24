@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import {
   EFavoritesEntity,
-  Favorites,
   FavoritesResponse,
   TFavorites,
   TFavoritesEntity,
@@ -14,6 +13,7 @@ import {
 import { ArtistsService } from '../artists/artists.service';
 import { TracksService } from '../tracks/tracks.service';
 import { AlbumsService } from '../albums/albums.service';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class FavoritesService {
@@ -21,33 +21,33 @@ export class FavoritesService {
     @Inject(ArtistsService) private readonly artistsService: ArtistsService,
     @Inject(TracksService) private readonly tracksService: TracksService,
     @Inject(AlbumsService) private readonly albumsService: AlbumsService,
+    @Inject(DatabaseService) private readonly databaseService: DatabaseService,
   ) {}
-  private readonly favorites: Favorites = {
-    artists: [],
-    tracks: [],
-    albums: [],
-  };
 
-  async getAll({
-    artists,
-    tracks,
-    albums,
-  }: FavoritesResponse): Promise<FavoritesResponse> {
-    const artistFavorites = artists.filter(({ id }) =>
-      this.favorites.artists.includes(id),
-    );
-    const trackFavorites = tracks.filter(({ id }) =>
-      this.favorites.tracks.includes(id),
-    );
-    const albumFavorites = albums.filter((album) =>
-      this.favorites.albums.includes(album.id),
-    );
+  async getAll(): Promise<FavoritesResponse> {
+    const favorites = await this.databaseService.favorites.findMany({
+      select: { album: true, artist: true, track: true },
+    });
 
-    return {
-      artists: artistFavorites,
-      tracks: trackFavorites,
-      albums: albumFavorites,
+    const data: FavoritesResponse = {
+      artists: [],
+      tracks: [],
+      albums: [],
     };
+
+    favorites.forEach((favorite) => {
+      if (favorite.artist) {
+        data.artists.push(favorite.artist);
+      }
+      if (favorite.track) {
+        data.tracks.push(favorite.track);
+      }
+      if (favorite.album) {
+        data.albums.push(favorite.album);
+      }
+    });
+
+    return data;
   }
 
   async addFavorite(
@@ -82,11 +82,14 @@ export class FavoritesService {
         throw new NotFoundException(`Cannot POST /favs/${entityType}/${id}`);
     }
 
-    const favoriteType = EFavoritesEntity[entityType];
-    const favoritesIds = this.favorites[favoriteType];
+    const favorite = await this.databaseService.favorites.findUnique({
+      where: { id },
+    });
 
-    if (!favoritesIds.includes(id)) {
-      this.favorites[favoriteType].push(id);
+    if (!favorite) {
+      await this.databaseService.favorites.create({
+        data: { [`${entityType}Id`]: id, id },
+      });
     }
 
     return entity;
@@ -101,15 +104,18 @@ export class FavoritesService {
       throw new NotFoundException(`Cannot DELETE /favs/${entityType}/${id}`);
     }
 
-    const favoritesIndex = this.favorites[favoriteType].findIndex(
-      (favoritesId) => favoritesId === id,
-    );
+    const favorite = await this.databaseService.favorites.findUnique({
+      where: { id },
+    });
 
-    if (favoritesIndex === -1) {
+    if (!favorite) {
       throw new NotFoundException('Favorites does not exist!');
     }
 
-    this.favorites[favoriteType].splice(favoritesIndex, 1);
+    await this.databaseService.favorites.delete({
+      where: { id },
+    });
+
     return 'done';
   }
 }

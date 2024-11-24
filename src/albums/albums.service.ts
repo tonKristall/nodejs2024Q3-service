@@ -1,33 +1,27 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Album, AlbumResponse } from './interfaces/album.interface';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { AlbumResponse } from './interfaces/album.interface';
 import { CreateAlbumDto } from './dto/create-album.dto';
 import { UpdateAlbumDto } from './dto/update-album.dto';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class AlbumsService {
-  private readonly albums: Album[] = [];
+  constructor(
+    @Inject(DatabaseService) private readonly databaseService: DatabaseService,
+  ) {}
 
-  async create({
-    name,
-    year,
-    artistId,
-  }: CreateAlbumDto): Promise<AlbumResponse> {
-    const newAlbum: Album = {
-      id: crypto.randomUUID(),
-      name,
-      year,
-      artistId,
-    };
-    this.albums.push(newAlbum);
-    return newAlbum;
+  async create(data: CreateAlbumDto): Promise<AlbumResponse> {
+    return await this.databaseService.album.create({ data });
   }
 
   async findAll(): Promise<AlbumResponse[]> {
-    return this.albums;
+    return await this.databaseService.album.findMany();
   }
 
   async findOne(id: string): Promise<AlbumResponse> {
-    const album = this.albums.find((album) => album.id === id);
+    const album = await this.databaseService.album.findUnique({
+      where: { id },
+    });
     if (!album) {
       throw new NotFoundException('Album does not exist!');
     }
@@ -39,38 +33,33 @@ export class AlbumsService {
     id: string,
     { name, year, artistId }: UpdateAlbumDto,
   ): Promise<AlbumResponse> {
-    const albumIndex = this.albums.findIndex((album) => album.id === id);
-
-    if (albumIndex === -1) {
+    const album = await this.databaseService.album.findUnique({
+      where: { id },
+    });
+    if (!album) {
       throw new NotFoundException('Album does not exist!');
     }
 
-    const updateAlbum = { ...this.albums[albumIndex] };
+    const updateAlbum = { ...album };
     if (name) updateAlbum.name = name;
     if (year) updateAlbum.year = year;
     if (artistId !== undefined) updateAlbum.artistId = artistId;
 
-    this.albums[albumIndex] = updateAlbum;
-
-    return this.albums[albumIndex];
+    return await this.databaseService.album.update({
+      where: { id },
+      data: updateAlbum,
+    });
   }
 
   async remove(id: string): Promise<string | null> {
-    const albumIndex = this.albums.findIndex((album) => album.id === id);
-
-    if (albumIndex === -1) {
+    const album = await this.databaseService.album.findUnique({
+      where: { id },
+    });
+    if (!album) {
       throw new NotFoundException('Album does not exist!');
     }
 
-    this.albums.splice(albumIndex, 1);
+    await this.databaseService.album.delete({ where: { id } });
     return 'done';
-  }
-
-  async removeArtist(artistId: string): Promise<void> {
-    this.albums.forEach((album) => {
-      if (album.artistId === artistId) {
-        album.artistId = null;
-      }
-    });
   }
 }

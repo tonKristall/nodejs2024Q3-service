@@ -5,6 +5,7 @@ export interface User {
   version: number; // integer number, increments on update
   createdAt: number; // timestamp of creation
   updatedAt: number; // timestamp of last update
+  refreshToken?: string;
 }
 
 export type UserResponse = Omit<User, 'password'>;
