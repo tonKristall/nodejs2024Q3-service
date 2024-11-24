@@ -28,9 +28,12 @@ export class AuthService {
 
     const payload = { userId: id, login };
     const accessToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '1h',
+      expiresIn: process.env.TOKEN_EXPIRE_TIME,
     });
-    const refreshToken = await this.jwtService.signAsync(uuid());
+    const refreshToken = await this.jwtService.signAsync(
+      { uuid: uuid() },
+      { expiresIn: process.env.TOKEN_REFRESH_EXPIRE_TIME },
+    );
     const response = {
       accessToken,
       refreshToken,
@@ -93,9 +96,12 @@ export class AuthService {
 
     const payload = { userId: user.id, login: user.login };
     const newAccessToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '1h',
+      expiresIn: process.env.TOKEN_EXPIRE_TIME,
     });
-    const newRefreshToken = await this.jwtService.signAsync(uuid());
+    const newRefreshToken = await this.jwtService.signAsync(
+      { uuid: uuid() },
+      { expiresIn: process.env.TOKEN_REFRESH_EXPIRE_TIME },
+    );
 
     await this.databaseService.user.update({
       where: { id: user.id },
