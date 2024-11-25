@@ -1,0 +1,113 @@
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { v4 as uuid } from 'uuid';
+import { hash, compare } from 'bcrypt';
+import { CreateUserDto } from '../users/dto/create-user.dto';
+import { DatabaseService } from '../database/database.service';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { AccessTokenDto } from './dto/access-token.dto';
+import { UserResponse } from '../users/interfaces/user.interface';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private jwtService: JwtService,
+    private databaseService: DatabaseService,
+  ) {}
+
+  async login(data: CreateUserDto): Promise<AccessTokenDto> {
+    const user = await this.databaseService.user.findUnique({
+      where: { login: data.login },
+    });
+
+    if (!user || !(await compare(data.password, user.password))) {
+      throw new ForbiddenException('Incorrect login or password!');
+    }
+
+    const { id, login } = user;
+
+    const payload = { userId: id, login };
+    const accessToken = await this.jwtService.signAsync(payload, {
+      expiresIn: process.env.TOKEN_EXPIRE_TIME,
+    });
+    const refreshToken = await this.jwtService.signAsync(
+      { uuid: uuid() },
+      { expiresIn: process.env.TOKEN_REFRESH_EXPIRE_TIME },
+    );
+    const response = {
+      accessToken,
+      refreshToken,
+    };
+    await this.databaseService.user.update({
+      where: { id },
+      data: { refreshToken },
+    });
+
+    return response;
+  }
+
+  async signup(data: CreateUserDto): Promise<UserResponse> {
+    const userDb = await this.databaseService.user.findUnique({
+      where: { login: data.login },
+      select: {
+        id: true,
+        login: true,
+        createdAt: true,
+        updatedAt: true,
+        version: true,
+      },
+    });
+
+    const password = await hash(data.password, Number(process.env.CRYPT_SALT));
+
+    const user =
+      userDb ||
+      (await this.databaseService.user.create({
+        data: { ...data, password, version: 1 },
+        select: {
+          id: true,
+          login: true,
+          createdAt: true,
+          updatedAt: true,
+          version: true,
+        },
+      }));
+
+    return {
+      ...user,
+      createdAt: new Date(user.createdAt).getTime(),
+      updatedAt: new Date(user.updatedAt).getTime(),
+    };
+  }
+
+  async refresh({ refreshToken }: RefreshTokenDto): Promise<AccessTokenDto> {
+    const user = await this.databaseService.user.findUnique({
+      where: { refreshToken },
+      select: {
+        id: true,
+        login: true,
+        refreshToken: true,
+      },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('Invalid refresh token');
+    }
+
+    const payload = { userId: user.id, login: user.login };
+    const newAccessToken = await this.jwtService.signAsync(payload, {
+      expiresIn: process.env.TOKEN_EXPIRE_TIME,
+    });
+    const newRefreshToken = await this.jwtService.signAsync(
+      { uuid: uuid() },
+      { expiresIn: process.env.TOKEN_REFRESH_EXPIRE_TIME },
+    );
+
+    await this.databaseService.user.update({
+      where: { id: user.id },
+      data: { refreshToken: newRefreshToken },
+    });
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  }
+}
