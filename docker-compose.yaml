@@ -1,0 +1,38 @@
+services:
+  app:
+    image: tonkristall/nodejs2024q3-service:app
+    container_name: app
+    env_file: ".env"
+    restart: unless-stopped
+    build: .
+    ports:
+      - ${PORT}:${PORT}
+    volumes:
+      - logs:/usr/src/app/logs
+      - ./src:/usr/src/app/src
+      - ./logs:/usr/src/app/logs
+    depends_on:
+      - db
+    networks:
+      - my_network
+
+  db:
+    image: tonkristall/nodejs2024q3-service:db
+    container_name: db
+    env_file: ".env"
+    restart: always
+    build:
+      context: ./prisma
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    driver: bridge
+
+volumes:
+  db_data:
+  logs:
+
